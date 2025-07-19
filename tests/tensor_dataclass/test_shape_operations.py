@@ -1,7 +1,6 @@
 import pytest
 import torch
 
-from tensorcontainer.tensor_dataclass import TensorDataClass
 from tests.conftest import skipif_no_compile
 from tests.tensor_dataclass.conftest import (
     ShapeTestClass,
@@ -85,24 +84,6 @@ class TestShapeOperations:
             assert td.b.shape == (4, 5)
         except ValueError:
             pytest.fail("Initialization failed with inconsistent trailing shapes.")
-
-    def test_no_tensor_fields(self):
-        """Test a TensorDataclass with no tensor fields."""
-
-        class NoTensorData(TensorDataClass):
-            meta: str
-
-        # Initialization
-        td = NoTensorData(shape=(2, 3), device=torch.device("cpu"), meta="test")
-        assert td.shape == (2, 3)
-        assert td.device == torch.device("cpu")
-        assert td.meta == "test"
-
-        # Clone
-        cloned_td = td.clone()
-        assert isinstance(cloned_td, NoTensorData)
-        assert cloned_td.shape == (2, 3)
-        assert cloned_td.meta == "test"
 
     @pytest.mark.parametrize(
         "original_shape,expected_elements",

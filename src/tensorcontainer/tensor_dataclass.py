@@ -3,15 +3,14 @@ from __future__ import annotations
 import copy
 import sys
 from dataclasses import dataclass, fields
-from typing import Any, Iterable, List, Optional, Tuple, TypeVar, Union, get_args
+from typing import Optional, TypeVar, Union
 
 import torch
 from torch import Tensor
-from torch.utils import _pytree as pytree
 from typing_extensions import dataclass_transform
 
+from tensorcontainer.tensor_annotated import TensorAnnotated
 from tensorcontainer.tensor_container import ShapeType, TensorContainer
-from tensorcontainer.utils import PytreeRegistered
 
 TDCompatible = Union[Tensor, TensorContainer]
 DATACLASS_ARGS = {"init", "repr", "eq", "order", "unsafe_hash", "frozen", "slots"}
@@ -27,7 +26,7 @@ class TensorDataclassTransform:
     pass
 
 
-class TensorDataClass(TensorContainer, PytreeRegistered, TensorDataclassTransform):
+class TensorDataClass(TensorAnnotated, TensorDataclassTransform):
     """A dataclass-based tensor container with automatic field generation and batch semantics.
 
     TensorDataClass provides a strongly-typed alternative to TensorDict by automatically
@@ -213,22 +212,7 @@ class TensorDataClass(TensorContainer, PytreeRegistered, TensorDataclassTransfor
         if hasattr(cls, "__slots__"):
             return
 
-        # In Python 3.9 __annotations__ also includes parent class
-        # annotations, which is regarded a bug and changed from Python 3.10+
-        # We use the following line to be backwards compatible for 3.9
-        # In Python 3.10+ we could simply use cls.__annotations__.
-        annotations = cls.__dict__.get("__annotations__", {})
-
-        # Programmatically prepend `shape` and `device` to the class annotations.
-        # Dataclasses use the order of `__annotations__` to generate the `__init__`
-        # method signature. We place `shape` and `device` first because they are
-        # non-default arguments required by `__post_init__`. This prevents errors
-        # if subclasses define fields with default values.
-        if "shape" in annotations or "device" in annotations:
-            raise TypeError(
-                f"Cannot define reserved fields in {cls.__name__}. "
-                f"'shape' and 'device' are automatically provided by TensorDataClass."
-            )
+        annotations = cls._get_annotations(TensorDataClass)
 
         cls.__annotations__ = {
             "shape": torch.Size,
@@ -268,113 +252,7 @@ class TensorDataClass(TensorContainer, PytreeRegistered, TensorDataclassTransfor
             ValueError: If tensor field shapes are incompatible with batch shape
             ValueError: If tensor field devices are incompatible with container device
         """
-        super().__init__(self.shape, self.device, True)
-
-    def _get_path_str(self, key_path):
-        """Helper to construct path string from key_path, robust to torch.compile."""
-        path_parts = []
-        for k in key_path:
-            if isinstance(k, tuple):  # Handle nested KeyPath tuples
-                path_parts.append(self._get_path_str(k))
-            elif hasattr(k, "key"):  # Access the 'key' attribute of the Key object
-                path_parts.append(str(k.key))
-            else:  # Fallback for unexpected elements
-                path_parts.append(str(k))
-        return ".".join(path_parts)
-
-    def _get_pytree_context(
-        self, flat_names: List[str], flat_leaves: List[TDCompatible], meta_data
-    ) -> Tuple:
-        """
-        Private helper to compute the pytree context for this TensorDataClass.
-        The context captures metadata to reconstruct the TensorDataClass:
-        children_spec, event_ndims, original shape, and original device.
-        """
-        batch_ndim = len(self.shape)
-        event_ndims = tuple(leaf.ndim - batch_ndim for leaf in flat_leaves)
-
-        return flat_names, event_ndims, meta_data, self.device
-
-    def _pytree_flatten(self) -> Tuple[List[Any], Any]:
-        """Flatten the TensorDataClass into tensor leaves and metadata context.
-
-        Separates dataclass fields into two categories:
-        - Tensor-compatible fields become PyTree leaves for transformation
-        - Non-tensor fields are stored as metadata in the context
-
-        This enables PyTree operations like tree_map to operate only on tensor
-        data while preserving all other field values through the context.
-
-        Returns:
-            Tuple containing:
-            - List of tensor values (PyTree leaves)
-            - Context tuple with (field_names, event_dims, metadata)
-        """
-        flat_names = []
-        flat_values = []
-
-        meta_data = {}
-
-        for f in fields(self):
-            name, val = f.name, getattr(self, f.name)
-            if isinstance(
-                val, get_args(TDCompatible)
-            ):  # Python 3.9 compatibility: expanded TDCompatible
-                flat_values.append(val)
-                flat_names.append(name)
-            else:
-                meta_data[name] = val
-
-        context = self._get_pytree_context(flat_names, flat_values, meta_data)
-
-        return flat_values, context
-
-    def _pytree_flatten_with_keys_fn(
-        self,
-    ) -> tuple[list[tuple[pytree.KeyEntry, Any]], Any]:
-        """
-        Flattens the TensorDataclass into key-path/leaf pairs and static metadata,
-        using GetAttrKey for dataclass attributes.
-        """
-        flat_values, context = self._pytree_flatten()
-        flat_names = context[0]
-        name_value_tuples = [
-            (pytree.GetAttrKey(k), v) for k, v in zip(flat_names, flat_values)
-        ]
-        return name_value_tuples, context  # type: ignore[return-value]
-
-    @classmethod
-    def _pytree_unflatten(
-        cls, leaves: Iterable[Any], context: pytree.Context
-    ) -> TensorDataClass:
-        """Unflattens component values into a dataclass instance."""
-        flat_names, event_ndims, meta_data, device = context
-
-        leaves = list(leaves)  # Convert to list to allow indexing
-
-        if not leaves:
-            return cls(**meta_data)
-
-        reconstructed_device = device
-
-        # Calculate new_shape based on the (potentially transformed) leaves and event_ndims from context.
-        # This correctly determines the batch shape of the TensorDict after operations like stack/cat.
-        # For copy(), where leaves are original, this also correctly yields the original shape.
-        first_leaf_reconstructed = leaves[0]
-        # event_ndims[0] is the event_ndim for the first leaf, relative to original batch shape.
-        if (
-            event_ndims[0] == 0
-        ):  # Leaf was a scalar or had only batch dimensions originally
-            reconstructed_shape = first_leaf_reconstructed.shape
-        else:  # Leaf had event dimensions originally
-            reconstructed_shape = first_leaf_reconstructed.shape[: -event_ndims[0]]
-
-        return cls(
-            **dict(zip(flat_names, leaves)),
-            **{k: v for k, v in meta_data.items() if k not in ["device", "shape"]},
-            device=reconstructed_device,
-            shape=reconstructed_shape,
-        )
+        super().__init__(self.shape, self.device)
 
     def __copy__(self: T_TensorDataclass) -> T_TensorDataclass:
         """Create a shallow copy of the TensorDataClass instance.

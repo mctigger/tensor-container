@@ -1,7 +1,9 @@
+import dataclasses
 import gc
 import weakref
+
 import torch
-import dataclasses
+
 from tensorcontainer import TensorDataClass
 
 

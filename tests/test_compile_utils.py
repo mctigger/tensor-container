@@ -1,13 +1,14 @@
-import torch
 import pytest
+import torch
 import torch._dynamo
 
 from tests.compile_utils import (
     get_graph_breaks_and_recompiles,
     run_and_compare_compiled,
-    run_and_count_recompiles,
     run_and_count_graph_breaks,
+    run_and_count_recompiles,
 )
+from tests.conftest import skipif_no_compile
 
 
 def no_break(x):
@@ -38,6 +39,7 @@ def three_breaks(x):
     return tensor[0] + 1
 
 
+@skipif_no_compile
 def test_run_and_compare_compiled_fails():
     # Assert that this raises an AssertionError.
     x = torch.randn(3, 4)
@@ -72,6 +74,7 @@ def one_break_one_recompile_func(i):
         (three_breaks, 3, False),
     ],
 )
+@skipif_no_compile
 def test_run_and_compare_compiled_parameterized(func, expected_graph_breaks, fullgraph):
     """Tests that a function has the expected number of graph breaks."""
     x = torch.randn(3, 4)
@@ -89,6 +92,7 @@ def test_run_and_compare_compiled_parameterized(func, expected_graph_breaks, ful
         (three_breaks, 3, False),
     ],
 )
+@skipif_no_compile
 def test_run_and_count_graph_breaks_parameterized(
     func, expected_graph_breaks, fullgraph
 ):
@@ -106,6 +110,7 @@ def test_run_and_count_graph_breaks_parameterized(
         (recursive_recompile, ((1,), (3,)), 1),
     ],
 )
+@skipif_no_compile
 def test_run_and_count_recompiles_parameterized(func, args, expected_recompiles):
     """Tests that a stateful functor recompiles as expected."""
     run_and_count_recompiles(func, *args, expected_recompiles=expected_recompiles)
@@ -122,6 +127,7 @@ def test_run_and_count_recompiles_parameterized(func, args, expected_recompiles)
         (one_break_one_recompile_func, ((1,), (2,)), 1, 1, False),
     ],
 )
+@skipif_no_compile
 def test_get_graph_breaks_and_recompiles_parameterized(
     func, args, expected_breaks, expected_recompiles, fullgraph
 ):

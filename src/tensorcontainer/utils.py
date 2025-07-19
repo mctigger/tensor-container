@@ -70,7 +70,6 @@ def resolve_device(device_str: Union[str, DeviceLikeType]) -> torch.device:
             and hasattr(backend, "current_device")
         ):
             current_index = backend.current_device()
-            print("current", current_index)
             return torch.device(f"{device.type}:{current_index}")
 
     # 4. If the backend doesn't exist or isn't set up, return the original device.

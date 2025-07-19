@@ -12,6 +12,59 @@ Tensor Container provides efficient, type-safe tensor container implementations 
 
 The library includes tensor containers, probabilistic distributions, and batch/event dimension semantics for machine learning workflows.
 
+## What is TensorContainer?
+
+TensorContainer transforms how you work with structured tensor data in PyTorch by providing **tensor-like operations for entire data structures**. Instead of manually managing individual tensors across devices, batch dimensions, and nested hierarchies, TensorContainer lets you treat complex data as unified entities that behave just like regular tensors.
+
+### 🚀 **Unified Operations Across Data Types**
+
+Apply tensor operations like `view()`, `permute()`, `detach()`, and device transfers to entire data structures—no matter how complex:
+
+```python
+# Single operation transforms entire distribution
+distribution = distribution.view(2, 3, 4).permute(1, 0, 2).detach()
+
+# Works seamlessly across TensorDict, TensorDataClass, and TensorDistribution
+data = data.to('cuda').reshape(batch_size, -1).clone()
+```
+
+### 🔄 **Drop-in Compatibility with PyTorch**
+
+TensorContainer integrates seamlessly with existing PyTorch workflows:
+- **torch.distributions compatibility**: TensorDistribution is API-compatible with `torch.distributions` while adding tensor-like operations
+- **PyTree support**: All containers work with `torch.utils._pytree` operations and `torch.compile`
+- **Zero learning curve**: If you know PyTorch tensors, you already know TensorContainer
+
+### ⚡ **Eliminates Boilerplate Code**
+
+Compare the complexity difference:
+
+**With torch.distributions** (manual parameter handling):
+```python
+# Requires type-specific parameter extraction and reconstruction
+if isinstance(dist, Normal):
+    detached = Normal(loc=dist.loc.detach(), scale=dist.scale.detach())
+elif isinstance(dist, Categorical):
+    detached = Categorical(logits=dist.logits.detach())
+# ... more type checks needed
+```
+
+**With TensorDistribution** (unified interface):
+```python
+# Works for any distribution type
+detached = dist.detach()
+```
+
+### 🏗️ **Structured Data Made Simple**
+
+Handle complex, nested tensor structures with the same ease as single tensors:
+- **Batch semantics**: Consistent shape handling across all nested tensors
+- **Device management**: Move entire structures between CPU/GPU with single operations
+- **Shape validation**: Automatic verification of tensor compatibility
+- **Type safety**: Full IDE support with static typing and autocomplete
+
+TensorContainer doesn't just store your data—it makes working with structured tensors as intuitive as working with individual tensors, while maintaining full compatibility with the PyTorch ecosystem you already know.
+
 ## Table of Contents
 
 - [Installation](#installation)

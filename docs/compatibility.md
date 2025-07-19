@@ -73,3 +73,4 @@ else:
     pass
 ```
 
+Version-specific features should be avoided whenever possible. Instead, use one of the above solutions.

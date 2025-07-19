@@ -11,23 +11,21 @@ from typing import (
     Optional,
     Tuple,
     Union,
-    overload,  # Added cast for explicit type hinting
     cast,  # Added cast for explicit type hinting
+    overload,  # Added cast for explicit type hinting
 )
-from typing_extensions import TypeAlias
-
 
 import torch
-from torch import Tensor
 
 # Use the official PyTree utility from torch
 import torch.utils._pytree as pytree
+from torch import Tensor
 from torch.utils._pytree import (
     KeyEntry,
     MappingKey,
     PyTree,
 )  # Explicitly imported for clarity and Pylance
-
+from typing_extensions import TypeAlias
 
 from tensorcontainer.tensor_container import TensorContainer
 from tensorcontainer.utils import PytreeRegistered

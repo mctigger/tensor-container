@@ -15,7 +15,6 @@ from typing import (
     Type,
     Union,
 )
-from typing_extensions import TypeAlias
 
 import torch
 
@@ -24,7 +23,7 @@ import torch.utils._pytree as pytree
 from torch import Tensor
 from torch._prims_common import DeviceLikeType, ShapeType
 from torch.utils._pytree import Context, KeyEntry, PyTree
-from typing_extensions import Self
+from typing_extensions import Self, TypeAlias
 
 from tensorcontainer.utils import resolve_device
 

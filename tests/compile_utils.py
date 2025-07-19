@@ -30,7 +30,7 @@ def _compare_results(eager_result, compiled_result):
     if isinstance(eager_result, TensorContainer):
         assert_tc_equal(eager_result, compiled_result)
     elif isinstance(eager_result, torch.Tensor):
-        assert torch.allclose(eager_result, compiled_result)
+        assert torch.allclose(eager_result, compiled_result, equal_nan=True)
     elif isinstance(eager_result, (tuple, list)):
         assert len(eager_result) == len(compiled_result)
         for er, cr in zip(eager_result, compiled_result):

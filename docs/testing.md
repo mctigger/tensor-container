@@ -78,3 +78,15 @@ Our testing philosophy is simple: **every piece of functionality should be verif
       - You MUST use the `context7 MCP` when you need to access the API of installed packages (such as `torch`, `numpy`, `torchvision`, etc.).
       - You MUST use the testing utilities from `torch.testing` when working with tensors.
   - **Do Not Modify Implementation**: You are NEVER allowed to change the implementation that is being tested. For example, if your task is to test `TensorContainer.flatten()`, you are not allowed to make any changes in `TensorContainer`.
+
+-----
+
+### Testing Considerations for torch.compile
+
+When testing code that uses [`torch.compile`](https://pytorch.org/docs/stable/generated/torch.compile.html), be aware of global state issues that can affect test isolation:
+
+- **Validation State Leakage**: [`torch.compile`](https://pytorch.org/docs/stable/generated/torch.compile.html) can disable [`torch.distributions`](https://pytorch.org/docs/stable/distributions.html) validation globally, causing subsequent tests to behave differently than expected.
+- **Test Isolation**: Use the [`preserve_distributions_validation`](tests/tensor_distribution/conftest.py:7) fixture (automatically applied) to ensure validation state doesn't leak between tests.
+- **Explicit Validation**: Use the [`with_distributions_validation`](tests/tensor_distribution/conftest.py:25) fixture when you need to guarantee validation is enabled for specific test scenarios.
+
+These fixtures prevent hard-to-debug test failures where validation-dependent tests pass or fail based on the order of test execution.

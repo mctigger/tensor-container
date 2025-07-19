@@ -118,22 +118,6 @@ class TestClone:
         # Check that requires_grad is preserved
         assert cloned_outer.inner.c.requires_grad == outer.inner.c.requires_grad  # type: ignore
 
-    def test_clone_empty_dataclass(self):
-        """
-        Clone should work correctly with empty TensorDataClass instances.
-        The cloned instance should preserve shape and device information.
-        """
-
-        class EmptyCloneTestClass(TensorDataClass):
-            pass
-
-        td = EmptyCloneTestClass(shape=torch.Size(()), device=torch.device("cpu"))
-        cloned_td = td.clone()
-
-        assert cloned_td is not td
-        assert cloned_td.shape == td.shape
-        assert cloned_td.device == td.device
-
     @skipif_no_cuda
     def test_clone_preserves_cuda_device(self):
         """

@@ -1,6 +1,7 @@
 import pytest
-from tensorcontainer.tensor_dict import TensorDict
 import torch
+
+from tensorcontainer.tensor_dict import TensorDict
 from tests.compile_utils import run_and_compare_compiled
 from tests.tensor_dict import common
 

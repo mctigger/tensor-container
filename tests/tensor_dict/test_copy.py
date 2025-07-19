@@ -2,8 +2,8 @@ import pytest
 import torch
 
 from tensorcontainer.tensor_dict import TensorDict
-from tests.conftest import skipif_no_compile
 from tests.compile_utils import run_and_compare_compiled
+from tests.conftest import skipif_no_compile
 
 
 @pytest.fixture

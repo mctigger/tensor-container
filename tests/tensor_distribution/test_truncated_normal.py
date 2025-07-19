@@ -1,107 +1,123 @@
+"""
+Tests for TensorTruncatedNormal distribution.
+
+This module contains test classes that verify:
+- TensorTruncatedNormal initialization and parameter validation
+- Core distribution operations (sample, rsample, log_prob)
+- TensorContainer integration (view, reshape, device operations)
+- Distribution-specific properties and edge cases
+"""
+
 import pytest
 import torch
 
-from tensorcontainer.tensor_distribution import (
-    TensorDistribution,
+from src.tensorcontainer.distributions.truncated_normal import TruncatedNormal
+from src.tensorcontainer.tensor_distribution.truncated_normal import (
     TensorTruncatedNormal,
 )
-from tests.conftest import skipif_no_cuda
-
-from .conftest import normalize_device
-
-
-def test_init_valid():
-    """Tests that TensorTruncatedNormal can be instantiated with valid parameters."""
-    loc = torch.zeros(2, 3)
-    scale = torch.ones(2, 3)
-    low = torch.full_like(loc, -0.5)
-    high = torch.full_like(loc, 0.5)
-    dist = TensorTruncatedNormal(
-        loc=loc,
-        scale=scale,
-        low=low,
-        high=high,
-        reinterpreted_batch_ndims=0,
-        shape=loc.shape,
-        device=loc.device,
-    )
-    assert isinstance(dist, TensorDistribution)
-
-
-def test_sample_shape_and_dtype():
-    """
-    Tests that the sample() method produces tensors of the correct shape,
-    dtype, and on the correct device.
-    """
-    loc = torch.randn(4, 3)
-    scale = torch.rand(4, 3) + 1e-6  # ensure scale is positive
-    low = torch.full_like(loc, -0.5)
-    high = torch.full_like(loc, 0.5)
-    dist = TensorTruncatedNormal(
-        loc=loc,
-        scale=scale,
-        low=low,
-        high=high,
-        reinterpreted_batch_ndims=0,
-        shape=loc.shape,
-        device=loc.device,
-    )
-    # Draw 5 i.i.d. samples
-    samples = dist.sample(sample_shape=torch.Size((5,)))
-
-    # Expected shape is (sample_shape, *batch_shape)
-    assert samples.shape == (5, *loc.shape)
-    assert samples.dtype == torch.float32
-
-
-@pytest.mark.parametrize(
-    "rbn_dims,expected_shape",
-    [
-        (0, (2, 3)),  # no reinterpretation -> log_prob per-element
-        (1, (2,)),  # sum over the last dimension
-        (2, ()),  # sum over the last two dimensions -> scalar
-    ],
+from tests.compile_utils import run_and_compare_compiled
+from tests.tensor_distribution.conftest import (
+    assert_init_signatures_match,
+    assert_properties_signatures_match,
+    assert_property_values_match,
 )
-def test_log_prob_reinterpreted_batch_ndims(rbn_dims, expected_shape):
-    """
-    Tests the log_prob method with different values for
-    reinterpreted_batch_ndims, ensuring the output shape and values are correct
-    by comparing with torch.distributions.Normal.
-    """
-    loc = torch.tensor([[0.0, 1.0, -1.0], [0.5, -0.5, 0.5]])
-    scale = torch.tensor([[0.2, 0.8, 0.1], [0.5, 0.5, 0.5]])
-    low = torch.full_like(loc, -1.0)
-    high = torch.full_like(loc, 1.0)
-    dist = TensorTruncatedNormal(
-        loc=loc,
-        scale=scale,
-        low=low,
-        high=high,
-        reinterpreted_batch_ndims=rbn_dims,
-        shape=loc.shape,
-        device=loc.device,
-    )
-    # A sample to evaluate the log probability of
-    x = torch.tensor([[0.1, 0.9, -0.9], [0.4, -0.6, 0.7]])
-    lp = dist.log_prob(x)
-
-    assert lp.shape == expected_shape
 
 
-@skipif_no_cuda
-def test_device_normalization_helper():
-    """
-    Tests the internal device normalization helper to ensure "cuda" and
-    "cuda:0" are treated as equivalent.
-    """
-    # This test is only meaningful if CUDA is available.
-    if torch.cuda.is_available():
-        dev1 = torch.device("cuda")
-        # Get the device from a tensor created on the default CUDA device
-        dev2 = torch.ones(1, device="cuda").device
-        assert normalize_device(dev1) == normalize_device(dev2)
-    else:
-        # On a CPU-only machine, test with "cpu"
-        dev1 = torch.device("cpu")
-        dev2 = torch.device("cpu:0")  # This is not standard but torch handles it
-        assert normalize_device(dev1) == normalize_device(dev2)
+class TestTensorTruncatedNormalInitialization:
+    @pytest.mark.parametrize("batch_shape", [(), (1,), (2, 3)])
+    @pytest.mark.parametrize("event_shape", [(), (1,), (2, 3)])
+    def test_truncated_normal_init(self, batch_shape, event_shape, device):
+        # Ensure that the shapes are correctly handled for scalar tensors
+        loc_param_shape = batch_shape + event_shape
+        loc = torch.randn(loc_param_shape if loc_param_shape else (), device=device)
+        scale = (
+            torch.rand(loc_param_shape if loc_param_shape else (), device=device) + 1e-6
+        )
+        low = torch.randn(loc_param_shape if loc_param_shape else (), device=device)
+        high = (
+            low
+            + torch.rand(loc_param_shape if loc_param_shape else (), device=device)
+            + 1e-6
+        )
+
+        dist = TensorTruncatedNormal(loc=loc, scale=scale, low=low, high=high)
+
+        expected_batch_shape = loc.shape[:-1] if loc.ndim > 0 else torch.Size([])
+        expected_event_shape = loc.shape[-1:] if loc.ndim > 0 else torch.Size([])
+
+        assert dist.batch_shape == expected_batch_shape
+        assert dist.event_shape == expected_event_shape
+        assert dist.loc.shape == loc.shape
+        assert dist.scale.shape == scale.shape
+        assert dist.low.shape == low.shape
+        assert dist.high.shape == high.shape
+
+
+class TestTensorTruncatedNormalAPIMatch:
+    def test_init_signatures_match(self, device):
+        assert_init_signatures_match(TensorTruncatedNormal, TruncatedNormal)
+
+    def test_properties_match(self, device):
+        assert_properties_signatures_match(TensorTruncatedNormal, TruncatedNormal)
+
+    def test_property_values_match(self, device):
+        loc = torch.randn(3, 5, device=device)
+        scale = torch.rand(3, 5, device=device) + 1e-6
+        low = torch.randn(3, 5, device=device)
+        high = low + torch.rand(3, 5, device=device) + 1e-6
+        td_truncated_normal = TensorTruncatedNormal(
+            loc=loc, scale=scale, low=low, high=high
+        )
+        assert_property_values_match(td_truncated_normal)
+
+
+class TestTensorTruncatedNormalMethods:
+    @pytest.mark.parametrize("batch_shape", [(), (1,), (2, 3)])
+    @pytest.mark.parametrize("event_shape", [(), (1,), (2, 3)])
+    def test_truncated_normal_methods(self, batch_shape, event_shape, device):
+        loc_param_shape = batch_shape + event_shape
+        loc = torch.randn(loc_param_shape if loc_param_shape else (), device=device)
+        scale = (
+            torch.rand(loc_param_shape if loc_param_shape else (), device=device) + 1e-6
+        )
+        low = torch.randn(loc_param_shape if loc_param_shape else (), device=device)
+        high = (
+            low
+            + torch.rand(loc_param_shape if loc_param_shape else (), device=device)
+            + 1e-6
+        )
+
+        dist = TensorTruncatedNormal(loc=loc, scale=scale, low=low, high=high)
+
+        # Test rsample
+        sample = dist.rsample()
+        assert sample.shape == dist.batch_shape + dist.event_shape
+
+        # Test log_prob
+        log_prob = dist.log_prob(sample)
+        assert log_prob.shape == dist.batch_shape
+
+
+class TestTensorTruncatedNormalCompileCompatibility:
+    @pytest.mark.parametrize("param_shape", [(5,), (3, 5), (2, 4, 5)])
+    def test_compile_compatibility(self, param_shape, device):
+        loc = torch.randn(*param_shape, device=device)
+        scale = torch.rand(*param_shape, device=device) + 1e-6
+        low = torch.randn(*param_shape, device=device)
+        high = low + torch.rand(*param_shape, device=device) + 1e-6
+
+        td_truncated_normal = TensorTruncatedNormal(
+            loc=loc, scale=scale, low=low, high=high, validate_args=False
+        )
+
+        def rsample_fn(td):
+            return td.rsample()
+
+        def log_prob_fn(td, s):
+            return td.log_prob(s)
+
+        run_and_compare_compiled(rsample_fn, td_truncated_normal, fullgraph=False)
+        value = td_truncated_normal.rsample(torch.Size((1,)))
+        run_and_compare_compiled(
+            log_prob_fn, td_truncated_normal, value, fullgraph=False
+        )

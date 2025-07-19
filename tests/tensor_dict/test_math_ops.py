@@ -4,11 +4,11 @@ import pytest
 import torch
 
 from tensorcontainer.tensor_dict import TensorDict
+from tests.conftest import skipif_no_compile
 
 from .common import compare_nested_dict
 
 
-@pytest.mark.skipif_no_compile
 class TestTensorDictMathOps:
     """
     Tests the mathematical operations of the TensorDict.
@@ -43,6 +43,7 @@ class TestTensorDictMathOps:
 
         compare_nested_dict(td.data, result_td.data, expected_op)
 
+    @skipif_no_compile
     @pytest.mark.parametrize("compile_op", [True, False])
     def test_abs(self, nested_dict, compile_op):
         """Tests the element-wise absolute value operation."""
@@ -60,6 +61,7 @@ class TestTensorDictMathOps:
 
         self._test_op(td, op, torch.abs, compile_op)
 
+    @skipif_no_compile
     @pytest.mark.parametrize("compile_op", [True, False])
     def test_add(self, nested_dict, compile_op):
         """Tests the element-wise addition operation."""
@@ -72,6 +74,7 @@ class TestTensorDictMathOps:
 
         self._test_op(td, op, lambda x: x + 2, compile_op)
 
+    @skipif_no_compile
     @pytest.mark.parametrize("compile_op", [True, False])
     def test_sub(self, nested_dict, compile_op):
         """Tests the element-wise subtraction operation."""
@@ -84,6 +87,7 @@ class TestTensorDictMathOps:
 
         self._test_op(td, op, lambda x: x - 2, compile_op)
 
+    @skipif_no_compile
     @pytest.mark.parametrize("compile_op", [True, False])
     def test_mul(self, nested_dict, compile_op):
         """Tests the element-wise multiplication operation."""
@@ -96,6 +100,7 @@ class TestTensorDictMathOps:
 
         self._test_op(td, op, lambda x: x * 2, compile_op)
 
+    @skipif_no_compile
     @pytest.mark.parametrize("compile_op", [True, False])
     def test_div(self, nested_dict, compile_op):
         """Tests the element-wise division operation."""
@@ -108,6 +113,7 @@ class TestTensorDictMathOps:
 
         self._test_op(td, op, lambda x: x / 2, compile_op)
 
+    @skipif_no_compile
     @pytest.mark.parametrize("compile_op", [True, False])
     def test_pow(self, nested_dict, compile_op):
         """Tests the element-wise power operation."""
@@ -120,6 +126,7 @@ class TestTensorDictMathOps:
 
         self._test_op(td, op, lambda x: x**2, compile_op)
 
+    @skipif_no_compile
     @pytest.mark.parametrize("compile_op", [True, False])
     def test_sqrt(self, nested_dict, compile_op):
         """Tests the element-wise square root operation."""
@@ -132,6 +139,7 @@ class TestTensorDictMathOps:
 
         self._test_op(td, op, torch.sqrt, compile_op)
 
+    @skipif_no_compile
     @pytest.mark.parametrize("compile_op", [True, False])
     def test_log(self, nested_dict, compile_op):
         """Tests the element-wise natural logarithm operation."""
@@ -151,6 +159,7 @@ class TestTensorDictMathOps:
 
         self._test_op(td, op, torch.log, compile_op)
 
+    @skipif_no_compile
     @pytest.mark.parametrize("compile_op", [True, False])
     def test_neg(self, nested_dict, compile_op):
         """Tests the element-wise negation operation."""
@@ -163,6 +172,7 @@ class TestTensorDictMathOps:
 
         self._test_op(td, op, lambda x: -x, compile_op)
 
+    @skipif_no_compile
     @pytest.mark.parametrize("compile_op", [True, False])
     def test_clamp(self, nested_dict, compile_op):
         """Tests the element-wise clamp operation."""

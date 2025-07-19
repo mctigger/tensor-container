@@ -2,11 +2,11 @@ import pytest
 import torch
 from torch._dynamo import exc as dynamo_exc
 
+from tests.compile_utils import run_and_compare_compiled
 from tests.conftest import skipif_no_compile
 from tests.tensor_dataclass.conftest import (
     compute_cat_shape,
 )
-from tests.compile_utils import run_and_compare_compiled
 
 
 class TestCat:

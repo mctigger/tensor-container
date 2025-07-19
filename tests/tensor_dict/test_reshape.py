@@ -1,5 +1,5 @@
-import torch
 import pytest
+import torch
 
 from tensorcontainer.tensor_dict import TensorDict
 

@@ -3,7 +3,7 @@ import torch
 
 from tensorcontainer.tensor_dict import TensorDict
 from tests.compile_utils import assert_tc_equal, run_and_compare_compiled
-from tests.conftest import skipif_no_cuda
+from tests.conftest import skipif_no_compile, skipif_no_cuda
 
 
 @pytest.fixture
@@ -43,6 +43,7 @@ class TestTensorDictCompilation:
     Tests for TensorDict operations under torch.compile.
     """
 
+    @skipif_no_compile
     def test_creation_from_tensors_in_compiled_function(self, base_td_data):
         """
         Verifies that a TensorDict can be successfully created from raw tensors
@@ -60,6 +61,7 @@ class TestTensorDictCompilation:
         obs, reward = base_td_data["obs"], base_td_data["reward"]
         run_and_compare_compiled(create_td_from_tensors, obs, reward)
 
+    @skipif_no_compile
     def test_creation_from_nested_dict_in_compiled_function(self, base_td_data):
         """
         Verifies that a TensorDict can be successfully created from a nested dictionary
@@ -77,6 +79,7 @@ class TestTensorDictCompilation:
         obs, reward = base_td_data["obs"], base_td_data["reward"]
         run_and_compare_compiled(create_td_from_nested_dict, obs, reward)
 
+    @skipif_no_compile
     def test_setting_values_in_compiled_function(self, simple_td):
         """
         Tests that setting and modifying values within a TensorDict
@@ -113,6 +116,7 @@ class TestTensorDictCompilation:
         #    This is an observed behavior when a PyTree input is modified and returned by torch.compile.
         assert_tc_equal(compiled_modified_td, simple_td_for_compile_input)
 
+    @skipif_no_compile
     def test_stacking_tensordicts_in_compiled_function(self, simple_td):
         """
         Tests torch.stack operation on TensorDicts within a compiled function.
@@ -129,6 +133,7 @@ class TestTensorDictCompilation:
         )
         assert eager_result.shape == (2, 4, 5)
 
+    @skipif_no_compile
     def test_concatenating_tensordicts_in_compiled_function(self, simple_td):
         """
         Tests torch.cat operation on TensorDicts within a compiled function.
@@ -152,6 +157,7 @@ class TestTensorDictCompilation:
             torch.tensor([0, 3]),  # advanced indexing
         ],
     )
+    @skipif_no_compile
     def test_indexing_tensordict_in_compiled_function(self, simple_td, index):
         """
         Tests various forms of indexing a TensorDict within a compiled function.
@@ -162,6 +168,7 @@ class TestTensorDictCompilation:
 
         run_and_compare_compiled(index_tensordict, simple_td)
 
+    @skipif_no_compile
     def test_operations_on_nested_tensordict_in_compiled_function(self, nested_td):
         """
         Tests slicing and modifying a nested TensorDict within a compiled function.
@@ -185,6 +192,7 @@ class TestTensorDictCompilation:
         assert eager_result["nested"].shape == (3,)
         assert_tc_equal(eager_result, compiled_result)
 
+    @skipif_no_compile
     @skipif_no_cuda
     def test_compile_to_device(self, simple_td):
         """
@@ -199,6 +207,7 @@ class TestTensorDictCompilation:
         )
         assert eager_result.device.type == "cuda"
 
+    @skipif_no_compile
     def test_dtype_change_in_compiled_function(self, simple_td):
         """
         Tests changing the dtype of a TensorDict's tensors within a compiled function.
